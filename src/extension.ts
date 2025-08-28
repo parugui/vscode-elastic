@@ -11,6 +11,7 @@ import { ElasticMatches } from './ElasticMatches';
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import stripJsonComments from './helpers';
 import { JsonPanel } from './jsonPanel';
+import { logDebug, logError, logInfo, showOutput } from './logger';
 const jsonPanel = new JsonPanel();
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -112,6 +113,7 @@ export async function activate(context: vscode.ExtensionContext) {
                 });
             } catch (error: any) {
                 console.log(error.message);
+                logError("[Register command - extension.lint]", {error: error.message})
             }
         }),
     );
@@ -133,9 +135,20 @@ export function getHost(context: vscode.ExtensionContext): string {
     return context.workspaceState.get('elasticsearch.host') || vscode.workspace.getConfiguration().get('elasticsearch.host', 'localhost:9200');
 }
 
+export function getExtraHeader(context: vscode.ExtensionContext) {
+    const config = vscode.workspace.getConfiguration('elastic');
+    const extraHeaders = config.get<Record<string, string>>('extraHeaders') || {};
+    return extraHeaders;
+}
+
 export async function executeQuery(context: vscode.ExtensionContext, resultsProvider: ElasticContentProvider, em: ElasticMatch) {
+    let results: any;
+    let response: AxiosResponse | AxiosError | any;
+    let status: number | undefined;
     const host = getHost(context);
+    const extraHeaders = getExtraHeader(context);
     const startTime = new Date().getTime();
+    showOutput();
 
     const config = vscode.workspace.getConfiguration();
     var asDocument = config.get('elasticsearch.showResultAsDocument');
@@ -144,36 +157,56 @@ export async function executeQuery(context: vscode.ExtensionContext, resultsProv
     sbi.text = '$(search) Executing query ...';
     sbi.show();
 
-    let response: any;
     try {
         const body = stripJsonComments(em.Body.Text);
-        let url = 'http://' + host + (em.Path.Text.startsWith('/') ? '' : '/') + em.Path.Text;
+        let url = host + (em.Path.Text.startsWith('/') ? '' : '/') + em.Path.Text;
+
+        logInfo('[executeQuery: Executing]', { method: em.Method.Text, url: url, headers: extraHeaders, body: body });
+
         response = await axios({
             url,
             method: em.Method.Text as any,
             data: body,
-            headers: { 'Content-Type': em.IsBulk ? 'application/x-ndjson' : 'application/json' },
-        }).catch(error => error as AxiosError<any, any>);
-    } catch (error) {
-        response = error;
+            headers: {
+                'Content-Type': em.IsBulk ? 'application/x-ndjson' : 'application/json',
+                ...extraHeaders,
+            },
+            validateStatus: () => true,
+        });
+
+        status = response.status;
+        results = response.data;
+
+        logDebug('[executeQuery: Success]', { status: response.status });
+    } catch (error: any) {
+        if (axios.isAxiosError(error)) {
+            status = error.response?.status;
+            results = error.response?.data || error.message;
+
+            logError('[executeQuery: Error]', {
+                message: error.message,
+                status: error.response?.status,
+                data: error.response?.data,
+            });
+        } else {
+            results = error.message;
+            logError('[executeQuery: unexpected error]', error);
+        }
     }
 
     sbi.dispose();
     const endTime = new Date().getTime();
-    const error = response as AxiosError;
-    const data = response as AxiosResponse<any>;
 
-    let results = data.data;
-    if (!results) results = data;
     if (asDocument) {
         try {
             const config = vscode.workspace.getConfiguration('editor');
             const tabSize = +(config.get('tabSize') as number);
-            results = JSON.stringify(error.isAxiosError ? error.response?.data : data.data, null, tabSize);
+            const pretty = JSON.stringify(results, null, tabSize);
+            
+            showResult(pretty, vscode.window.activeTextEditor!.viewColumn! + 1);
         } catch (error: any) {
-            results = data.data || error.response?.data || error.message;
+            showResult(String(results), vscode.window.activeTextEditor!.viewColumn! + 1);
         }
-        showResult(results, vscode.window.activeTextEditor!.viewColumn! + 1);
     } else {
         jsonPanel.render(results, `ElasticSearch Results[${endTime - startTime}ms]`);
     }

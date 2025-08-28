@@ -2,7 +2,7 @@
     "name": "elastic",
     "displayName": "Elasticsearch for VSCode",
     "description": "Elasticsearch client like Kibana console for vscode",
-    "version": "1.0.38",
+    "version": "1.0.39",
     "publisher": "ria",
     "icon": "media/elastic.png",
     "main": "./out/extension.js",
@@ -95,6 +95,16 @@
                     "type": "string",
                     "default": "http://localhost:9200",
                     "description": "Elasticsearch Host"
+                },
+                "elastic.extraHeaders": {
+                    "type": "object",
+                    "description": "Extra Headers to add and send in every request",
+                    "default": {}
+                },
+                "elastic.showVerboseLogs": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Enable verbose log level in the Elasticsearch for VSCode output"
                 }
             }
         },
@@ -112,9 +122,10 @@
         ]
     },
     "dependencies": {
-        "cross-env": "^7.0.3",
+        "@types/mustache": "^4.2.6",
         "axios": "^0.26.1",
         "copy-paste": "^1.3.0",
+        "cross-env": "^7.0.3",
         "json-markup": "^1.1.3",
         "jsonc-parser": "^3.0.0",
         "mustache": "^4.2.0",

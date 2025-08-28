@@ -1,11 +1,20 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import stripJsonComments from './helpers';
+import stripJsonComments, { handleTemplate } from './helpers';
+import Mustache = require('mustache');
+import { logDebug, logError, logInfo, showOutput } from './logger';
 
 export class ElasticItem {
     public Range!: vscode.Range;
     public Text!: string;
+}
+
+export interface ITemplateItem {
+    script: {
+        lang: string;
+        source: string;
+    };
 }
 
 export class ElasticMatch {
@@ -75,14 +84,32 @@ export class ElasticMatch {
         this.Body.Text = jsonText;
 
         try {
-            if (!this.IsBulk) JSON.parse(stripJsonComments(jsonText));
+            if (!this.IsBulk) {
+                jsonText = stripJsonComments(jsonText);
+                if (jsonText.includes('mustache')) {
+                    jsonText = handleTemplate(jsonText);
+                    this.Body.Text = jsonText;
+
+                    logInfo('[ElasticMatch - handleTemplate]', { message: 'Script mustache convert succesfully', script: jsonText });
+
+                } else {
+                    JSON.parse(jsonText);
+                }
+            }
             this.HasBody = true;
             this.Range = new vscode.Range(this.Method.Range.start, this.Body.Range.end);
         } catch (error: any) {
-            // console.error(error.message)
+            showOutput();
+
             this.HasBody = false;
             this.Range = new vscode.Range(this.Method.Range.start, this.Path.Range.end);
             this.Error = this.GetErrorFromMessage(txt, error.message);
+
+            logError('[ElasticMatch : JSON validation failed]', {
+                message: this.Error,
+                range: this.Range,
+                bodySnippet: jsonText.substring(0, 200),
+            });
         }
     }
 
