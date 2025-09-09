@@ -98,31 +98,31 @@ export async function activate(context: vscode.ExtensionContext) {
             statusBarItem.text = `$(server) Elastic: ${currentEnv}`;
             statusBarItem.show();
         }
-
-        context.subscriptions.push(
-            vscode.commands.registerCommand('elastic.changeEnvironment', async () => {
-                const config = vscode.workspace.getConfiguration('elastic');
-                const envs = config.get<Record<string, any>>('environments') || {};
-                const picked = await vscode.window.showQuickPick(Object.keys(envs), {
-                    placeHolder: 'Select environment',
-                });
-                if (picked) {
-                    currentEnv = picked;
-                    context.globalState.update('elastic.currentEnv', picked);
-                    logDebug('[ElasticMatch - currentEnv]', { globalState: context.globalState.get('elastic.currentEnv') });
-                    updateStatusBar();
-                    vscode.window.setStatusBarMessage(`Elasic environment changed to ${picked}`, 5000);
-                }
-            }),
-        );
-
-        context.subscriptions.push(
-            vscode.commands.registerCommand('elastic.configureEnvironments', async () => {
-                // The command "workbench.action.openSettings" open configuration interface
-                await vscode.commands.executeCommand('workbench.action.openSettings', 'elastic.environments');
-            }),
-        );
     }
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('elastic.changeEnvironment', async () => {
+            const config = vscode.workspace.getConfiguration('elastic');
+            const envs = config.get<Record<string, any>>('environments') || {};
+            const picked = await vscode.window.showQuickPick(Object.keys(envs), {
+                placeHolder: 'Select environment',
+            });
+            if (picked) {
+                currentEnv = picked;
+                context.globalState.update('elastic.currentEnv', picked);
+                logDebug('[ElasticMatch - currentEnv]', { globalState: context.globalState.get('elastic.currentEnv') });
+                updateStatusBar();
+                vscode.window.setStatusBarMessage(`Elasic environment changed to ${picked}`, 5000);
+            }
+        }),
+    );
+
+    context.subscriptions.push(
+        vscode.commands.registerCommand('elastic.configureEnvironments', async () => {
+            // The command "workbench.action.openSettings" open configuration interface
+            await vscode.commands.executeCommand('workbench.action.openSettings', 'elastic.environments');
+        }),
+    );
 
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.lint', (em: ElasticMatch) => {

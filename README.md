@@ -1,7 +1,6 @@
 ## Elasticsearch for VSCode
 
-[![.github/workflows/runTests.yaml](/../../actions/workflows/runTests.yaml/badge.svg)](/../../actions/workflows/runTests.yaml)
-[![.github/workflows/publish.yaml](/../../actions/workflows/publish.yaml/badge.svg)](/../../actions/workflows/publish.yaml)
+
 Welcome to **Elasticsearch for VSCode**, the definitive extension for developers who work with **Elasticsearch queries** directly within Visual Studio Code. Streamline your workflow, execute queries intuitively, and manage multiple environments with ease.
 
 ![shot](shots/all.gif)

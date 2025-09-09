@@ -2,7 +2,7 @@
     "name": "elastic",
     "displayName": "Elasticsearch for VSCode",
     "description": "Elasticsearch client like Kibana console for vscode",
-    "version": "2.0.2",
+    "version": "2.0.4",
     "publisher": "ria",
     "icon": "media/elastic.png",
     "main": "./out/extension.js",
@@ -58,8 +58,7 @@
         "commands": [
             {
                 "command": "elastic.changeEnvironment",
-                "title": "Elastic: Change Environment",
-                "category": "Elastic"
+                "title": "Elastic: Change Environment"
             },
             {
                 "command": "elastic.configureEnvironments",
