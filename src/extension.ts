@@ -23,7 +23,7 @@ export async function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(vscode.languages.registerCodeLensProvider(languages, new ElasticCodeLensProvider(context)));
 
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
-    statusBarItem.command = 'elastic.changeEnvironment';
+    statusBarItem.command = 'extension.changeEnvironment';
     context.subscriptions.push(statusBarItem);
 
     updateStatusBar();
@@ -101,7 +101,7 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('elastic.changeEnvironment', async () => {
+        vscode.commands.registerCommand('extension.changeEnvironment', async () => {
             const config = vscode.workspace.getConfiguration('elastic');
             const envs = config.get<Record<string, any>>('environments') || {};
             const picked = await vscode.window.showQuickPick(Object.keys(envs), {
@@ -118,7 +118,7 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('elastic.configureEnvironments', async () => {
+        vscode.commands.registerCommand('extension.configureEnvironments', async () => {
             // The command "workbench.action.openSettings" open configuration interface
             await vscode.commands.executeCommand('workbench.action.openSettings', 'elastic.environments');
         }),
@@ -158,7 +158,7 @@ export function getCurrentEnvironment(context: vscode.ExtensionContext) {
         );
         vscode.window.showWarningMessage('No active Elastic environment selected. Please choose one.', 'Choose now').then(selection => {
             if (selection === 'Choose now') {
-                vscode.commands.executeCommand('elastic.changeEnvironment');
+                vscode.commands.executeCommand('extension.changeEnvironment');
             }
         });
         return;
@@ -178,7 +178,7 @@ export function getEnvironments() {
         );
         vscode.window.showWarningMessage('No Elastic environment configured. Please set them up.', 'Configure now').then(selection => {
             if (selection === 'Configure now') {
-                vscode.commands.executeCommand('elastic.configureEnvironments');
+                vscode.commands.executeCommand('extension.configureEnvironments');
             }
         });
         return {};
