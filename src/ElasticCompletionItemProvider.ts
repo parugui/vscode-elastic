@@ -2,7 +2,7 @@ import { ElasticMatch } from './ElasticMatch';
 import { ElasticMatches } from './ElasticMatches';
 import * as vscode from 'vscode';
 import * as os from 'os';
-import { getHost } from './extension';
+import { getCurrentEnvironment } from './extension';
 import axiosInstance from './axiosInstance';
 const routington = require('routington');
 const closestSemver = require('semver-closest');
@@ -191,32 +191,32 @@ export class ElasticCompletionItemProvider implements vscode.CompletionItemProvi
     //private lookupEndpoint(esVersion: string, )
 
     private async listIndices(): Promise<string[]> {
-        const host = getHost(this.context);
-        return await axiosInstance
-            .get(`${host}/_cat/indices?format=json`)
+        const env = getCurrentEnvironment(this.context);
+        return await axiosInstance(env.extraHeaders)
+            .get(`${env.host}/_cat/indices?format=json`)
             .then(res => res.data.map((entry: any) => entry.index) as string[])
             .catch(() => [] as string[]);
     }
     private async listAliases(): Promise<string[]> {
-        const host = getHost(this.context);
-        return await axiosInstance
-            .get(`${host}/_cat/aliases?format=json`)
+        const env = getCurrentEnvironment(this.context);
+        return await axiosInstance(env.extraHeaders)
+            .get(`${env.host}/_cat/aliases?format=json`)
             .then(res => res.data.map((entry: any) => entry.alias) as string[])
             .catch(() => [] as string[]);
     }
 
     private async listRepositories(): Promise<string[]> {
-        const host = getHost(this.context);
-        return await axiosInstance
-            .get(`${host}/_snapshot`)
+        const env = getCurrentEnvironment(this.context);
+        return await axiosInstance(env.extraHeaders)
+            .get(`${env.host}/_snapshot`)
             .then(res => Object.keys(res.data) as string[])
             .catch(() => [] as string[]);
     }
 
     private async getElasticVersion(): Promise<string | null> {
-        const host = getHost(this.context);
-        return await axiosInstance
-            .get(`${host}`)
+        const env = getCurrentEnvironment(this.context);
+        return await axiosInstance(env.extraHeaders)
+            .get(`${env.host}`)
             .then(res => res.data.version.number as string)
             .catch(() => null);
     }

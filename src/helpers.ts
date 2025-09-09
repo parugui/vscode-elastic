@@ -113,7 +113,7 @@ export function handleTemplate(jsonString: string) {
 }
 
 export function extractScriptSource(jsonText: string): string | null {
-    const normalizedJson = jsonText.replace(/\s/g, '').toLowerCase();
+    const normalizedJson = jsonText.replace(/\s/g, '');
 
     const startIndex = normalizedJson.indexOf('"source":{');
 
@@ -143,4 +143,12 @@ export function extractScriptSource(jsonText: string): string | null {
     }
 
     return null;
+}
+
+export function isRecordEmpty(obj: Record<string, any> | null | undefined): boolean {
+    if (obj === null || obj === undefined) {
+        return true;
+    }
+
+    return Object.keys(obj).length === 0;
 }

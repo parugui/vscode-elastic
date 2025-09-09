@@ -1,21 +1,17 @@
 import axios from 'axios';
-import * as vscode from 'vscode';
 import { logDebug, logError, showOutput } from './logger';
 
 // process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-const config = vscode.workspace.getConfiguration('elastic');
-const extraHeaders = config.get<Record<string, string>>('extraHeaders') || {};
-
-const axiosIntance = axios.create({
+const axiosIntance = (extraHeaders?: any) => axios.create({
     headers: {
         Accept: 'application/json',
         'Content-Type': 'application/json',
-        ...extraHeaders,
+        ...(extraHeaders || {}),
     },
 });
 
-axiosIntance.interceptors.request.use(request => {
+axiosIntance().interceptors.request.use(request => {
     showOutput()
     logDebug('[axiosIntance : Request]', {
         method: request.method,
@@ -26,7 +22,7 @@ axiosIntance.interceptors.request.use(request => {
     return request;
 });
 
-axiosIntance.interceptors.response.use(
+axiosIntance().interceptors.response.use(
     response => {
         logDebug('[axiosIntance : Response]', {
             status: response.status,

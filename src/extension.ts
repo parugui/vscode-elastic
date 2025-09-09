@@ -9,15 +9,24 @@ import { ElasticDecoration } from './ElasticDecoration';
 import { ElasticMatch } from './ElasticMatch';
 import { ElasticMatches } from './ElasticMatches';
 import axios, { AxiosError, AxiosResponse } from 'axios';
-import stripJsonComments from './helpers';
+import stripJsonComments, { isRecordEmpty } from './helpers';
 import { JsonPanel } from './jsonPanel';
 import { logDebug, logError, logInfo, showOutput } from './logger';
 const jsonPanel = new JsonPanel();
 
+let currentEnv: string | undefined;
+let statusBarItem: vscode.StatusBarItem;
+
 export async function activate(context: vscode.ExtensionContext) {
-    getHost(context);
+    let currentEnv = (context.globalState.get('elastic.currentEnv') as string) || '';
     const languages = ['es', 'elasticsearch'];
     context.subscriptions.push(vscode.languages.registerCodeLensProvider(languages, new ElasticCodeLensProvider(context)));
+
+    statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
+    statusBarItem.command = 'elastic.changeEnvironment';
+    context.subscriptions.push(statusBarItem);
+
+    updateStatusBar();
 
     let resultsProvider = new ElasticContentProvider();
     vscode.workspace.registerTextDocumentContentProvider('elasticsearch', resultsProvider);
@@ -69,21 +78,8 @@ export async function activate(context: vscode.ExtensionContext) {
     );
 
     context.subscriptions.push(
-        vscode.commands.registerCommand('extension.setHost', () => {
-            setHost(context);
-        }),
-    );
-
-    vscode.commands.registerCommand('extension.setClip', (uri, query) => {
-        // var ncp = require('copy-paste');
-        // ncp.copy(query, function () {
-        // vscode.window.showInformationMessage('Copied to clipboard');
-        // });
-    });
-
-    context.subscriptions.push(
         vscode.commands.registerCommand('extension.open', (em: ElasticMatch) => {
-            var column = 0;
+            const column = 0;
             let uri = vscode.Uri.file(em.File.Text);
             return vscode.workspace
                 .openTextDocument(uri)
@@ -96,6 +92,37 @@ export async function activate(context: vscode.ExtensionContext) {
                 );
         }),
     );
+
+    function updateStatusBar() {
+        if (currentEnv) {
+            statusBarItem.text = `$(server) Elastic: ${currentEnv}`;
+            statusBarItem.show();
+        }
+
+        context.subscriptions.push(
+            vscode.commands.registerCommand('elastic.changeEnvironment', async () => {
+                const config = vscode.workspace.getConfiguration('elastic');
+                const envs = config.get<Record<string, any>>('environments') || {};
+                const picked = await vscode.window.showQuickPick(Object.keys(envs), {
+                    placeHolder: 'Select environment',
+                });
+                if (picked) {
+                    currentEnv = picked;
+                    context.globalState.update('elastic.currentEnv', picked);
+                    logDebug('[ElasticMatch - currentEnv]', { globalState: context.globalState.get('elastic.currentEnv') });
+                    updateStatusBar();
+                    vscode.window.setStatusBarMessage(`Elasic environment changed to ${picked}`, 5000);
+                }
+            }),
+        );
+
+        context.subscriptions.push(
+            vscode.commands.registerCommand('elastic.configureEnvironments', async () => {
+                // The command "workbench.action.openSettings" open configuration interface
+                await vscode.commands.executeCommand('workbench.action.openSettings', 'elastic.environments');
+            }),
+        );
+    }
 
     context.subscriptions.push(
         vscode.commands.registerCommand('extension.lint', (em: ElasticMatch) => {
@@ -113,45 +140,77 @@ export async function activate(context: vscode.ExtensionContext) {
                 });
             } catch (error: any) {
                 console.log(error.message);
-                logError("[Register command - extension.lint]", {error: error.message})
+                logError('[Register command - extension.lint]', { error: error.message });
             }
         }),
     );
 }
 
-async function setHost(context: vscode.ExtensionContext): Promise<string> {
-    const host = await vscode.window.showInputBox(<vscode.InputBoxOptions>{
-        prompt: 'Please enter the elastic host',
-        ignoreFocusOut: true,
-        value: getHost(context),
-    });
+export function getCurrentEnvironment(context: vscode.ExtensionContext) {
+    const environments = getEnvironments();
 
-    context.workspaceState.update('elasticsearch.host', host);
-    vscode.workspace.getConfiguration().update('elasticsearch.host', host);
-    return host || 'localhost:9200';
+    logDebug('[ElasticMatch - currentEnv]', { globalState: context.globalState.get('elastic.currentEnv') });
+    const currentEnv = context.globalState.get<string>('elastic.currentEnv') || '';
+
+    if (!currentEnv) {
+        logDebug(
+            '[ElasticMatch - activate] - No active Elastic environment selected. Please choose one. To select, press Ctrl+Shift+P and run "Elastic: Change Environment".',
+        );
+        vscode.window.showWarningMessage('No active Elastic environment selected. Please choose one.', 'Choose now').then(selection => {
+            if (selection === 'Choose now') {
+                vscode.commands.executeCommand('elastic.changeEnvironment');
+            }
+        });
+        return;
+    }
+
+    logInfo('[ElasticMatch - getCurrentEnvironment]', { environments: environments, currentEnv: currentEnv });
+    return environments[currentEnv] || {};
+}
+
+export function getEnvironments() {
+    const config = vscode.workspace.getConfiguration('elastic');
+    const environments = config.get<Record<string, any>>('environments') || {};
+
+    if (isRecordEmpty(environments)) {
+        logDebug(
+            '[ElasticMatch - getCurrentEnvironment] - No Elastic environment configured. Please set up your environments. To configure, press Ctrl+Shift+P and run "Elastic: Configure Environments".',
+        );
+        vscode.window.showWarningMessage('No Elastic environment configured. Please set them up.', 'Configure now').then(selection => {
+            if (selection === 'Configure now') {
+                vscode.commands.executeCommand('elastic.configureEnvironments');
+            }
+        });
+        return {};
+    }
+
+    logInfo('[ElasticMatch - getEnvironments]', { environments: environments });
+    return environments;
 }
 
 export function getHost(context: vscode.ExtensionContext): string {
-    return context.workspaceState.get('elasticsearch.host') || vscode.workspace.getConfiguration().get('elasticsearch.host', 'localhost:9200');
+    const env = getCurrentEnvironment(context);
+    return env.host || 'localhost:9200';
 }
 
 export function getExtraHeader(context: vscode.ExtensionContext) {
-    const config = vscode.workspace.getConfiguration('elastic');
-    const extraHeaders = config.get<Record<string, string>>('extraHeaders') || {};
-    return extraHeaders;
+    const env = getCurrentEnvironment(context);
+    return env.extraHeaders || {};
 }
 
 export async function executeQuery(context: vscode.ExtensionContext, resultsProvider: ElasticContentProvider, em: ElasticMatch) {
     let results: any;
     let response: AxiosResponse | AxiosError | any;
     let status: number | undefined;
-    const host = getHost(context);
-    const extraHeaders = getExtraHeader(context);
+    const env = getCurrentEnvironment(context);
+    const environments = getEnvironments();
+    const host = env.host;
+    const extraHeaders = env.extraHeaders;
     const startTime = new Date().getTime();
     showOutput();
 
     const config = vscode.workspace.getConfiguration();
-    var asDocument = config.get('elasticsearch.showResultAsDocument');
+    const asDocument = config.get('elasticsearch.showResultAsDocument');
 
     const sbi = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     sbi.text = '$(search) Executing query ...';
@@ -177,7 +236,7 @@ export async function executeQuery(context: vscode.ExtensionContext, resultsProv
         status = response.status;
         results = response.data;
 
-        logDebug('[executeQuery: Success]', { status: response.status });
+        logDebug('[executeQuery: Success]', { status: status });
     } catch (error: any) {
         if (axios.isAxiosError(error)) {
             status = error.response?.status;
@@ -185,8 +244,9 @@ export async function executeQuery(context: vscode.ExtensionContext, resultsProv
 
             logError('[executeQuery: Error]', {
                 message: error.message,
-                status: error.response?.status,
-                data: error.response?.data,
+                status: status,
+                data: results,
+                error: error,
             });
         } else {
             results = error.message;
@@ -202,7 +262,7 @@ export async function executeQuery(context: vscode.ExtensionContext, resultsProv
             const config = vscode.workspace.getConfiguration('editor');
             const tabSize = +(config.get('tabSize') as number);
             const pretty = JSON.stringify(results, null, tabSize);
-            
+
             showResult(pretty, vscode.window.activeTextEditor!.viewColumn! + 1);
         } catch (error: any) {
             showResult(String(results), vscode.window.activeTextEditor!.viewColumn! + 1);
