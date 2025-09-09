@@ -192,31 +192,31 @@ export class ElasticCompletionItemProvider implements vscode.CompletionItemProvi
 
     private async listIndices(): Promise<string[]> {
         const env = getCurrentEnvironment(this.context);
-        return await axiosInstance(env.extraHeaders)
-            .get(`${env.host}/_cat/indices?format=json`)
+        return await axiosInstance(env?.extraHeaders)
+            .get(`${env?.host}/_cat/indices?format=json`)
             .then(res => res.data.map((entry: any) => entry.index) as string[])
             .catch(() => [] as string[]);
     }
     private async listAliases(): Promise<string[]> {
         const env = getCurrentEnvironment(this.context);
-        return await axiosInstance(env.extraHeaders)
-            .get(`${env.host}/_cat/aliases?format=json`)
+        return await axiosInstance(env?.extraHeaders)
+            .get(`${env?.host}/_cat/aliases?format=json`)
             .then(res => res.data.map((entry: any) => entry.alias) as string[])
             .catch(() => [] as string[]);
     }
 
     private async listRepositories(): Promise<string[]> {
         const env = getCurrentEnvironment(this.context);
-        return await axiosInstance(env.extraHeaders)
-            .get(`${env.host}/_snapshot`)
+        return await axiosInstance(env?.extraHeaders)
+            .get(`${env?.host}/_snapshot`)
             .then(res => Object.keys(res.data) as string[])
             .catch(() => [] as string[]);
     }
 
     private async getElasticVersion(): Promise<string | null> {
         const env = getCurrentEnvironment(this.context);
-        return await axiosInstance(env.extraHeaders)
-            .get(`${env.host}`)
+        return await axiosInstance(env?.extraHeaders)
+            .get(`${env?.host}`)
             .then(res => res.data.version.number as string)
             .catch(() => null);
     }

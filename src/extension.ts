@@ -18,7 +18,7 @@ let currentEnv: string | undefined;
 let statusBarItem: vscode.StatusBarItem;
 
 export async function activate(context: vscode.ExtensionContext) {
-    let currentEnv = (context.globalState.get('elastic.currentEnv') as string) || '';
+    currentEnv = (context.globalState.get('elastic.currentEnv') as string) || '';
     const languages = ['es', 'elasticsearch'];
     context.subscriptions.push(vscode.languages.registerCodeLensProvider(languages, new ElasticCodeLensProvider(context)));
 
@@ -190,12 +190,12 @@ export function getEnvironments() {
 
 export function getHost(context: vscode.ExtensionContext): string {
     const env = getCurrentEnvironment(context);
-    return env.host || 'localhost:9200';
+    return env?.host || 'localhost:9200';
 }
 
 export function getExtraHeader(context: vscode.ExtensionContext) {
     const env = getCurrentEnvironment(context);
-    return env.extraHeaders || {};
+    return env?.extraHeaders || {};
 }
 
 export async function executeQuery(context: vscode.ExtensionContext, resultsProvider: ElasticContentProvider, em: ElasticMatch) {
